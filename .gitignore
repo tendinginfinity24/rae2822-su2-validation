@@ -1,0 +1,13 @@
+# SU2 outputs
+*.vtu
+*.dat
+history*
+restart*
+mesh_out*
+
+# Python
+__pycache__/
+*.pyc
+
+# Virtual env
+venv/
