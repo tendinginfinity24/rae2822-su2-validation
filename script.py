@@ -1,23 +1,19 @@
 import gmsh
 import sys
 
-# --- 1. Parameters (RAE 2822 Case 6 Calibration) ---
 CHORD = 1.0
 lc_farfield = 5.0
-lc_airfoil = 0.003  # Finer general distribution
-lc_le_te = 0.0008   # Sharp LE and TE resolution
-lc_shock = 0.001    # Refinement for x/c 0.4 to 0.7
+lc_airfoil = 0.003  
+lc_le_te = 0.0008   
+lc_shock = 0.001    
 
-# Boundary Layer (Targeting y+ ~ 1)
 first_layer = 2.5e-6 
 growth_rate = 1.18
 num_layers = 35
 
-# --- 2. Initialize ---
 gmsh.initialize()
 gmsh.model.add("RAE2822_Case6_Validation")
 
-# --- 3. Airfoil Coordinates ---
 rae_upper = [
     (0.00000, 0.00000), (0.00500, 0.01085), (0.01250, 0.01569), (0.02500, 0.02081),
     (0.05000, 0.02856), (0.07500, 0.03483), (0.10000, 0.04036), (0.15000, 0.04987),
@@ -37,13 +33,11 @@ rae_lower = [
     (0.97500, -0.00766), (1.00000, 0.00000)
 ]
 
-# --- 4. Geometry Construction ---
 p_le = gmsh.model.geo.addPoint(0, 0, 0, lc_le_te)
 p_te = gmsh.model.geo.addPoint(1, 0, 0, lc_le_te)
 
 pts_u = [p_le]
 for (x, y) in rae_upper[1:-1]:
-    # Refine specifically in the shock region (0.4 < x < 0.7)
     lc = lc_shock if 0.4 < x < 0.7 else lc_airfoil
     pts_u.append(gmsh.model.geo.addPoint(x, y, 0, lc))
 pts_u.append(p_te)
@@ -56,7 +50,6 @@ pts_l.append(p_le)
 l_upper = gmsh.model.geo.addSpline(pts_u)
 l_lower = gmsh.model.geo.addSpline(pts_l)
 
-# Farfield
 radius = 30.0
 c_x, c_y = 0.5, 0.0
 p_c = gmsh.model.geo.addPoint(c_x, c_y, 0, lc_farfield)
@@ -76,36 +69,31 @@ surf = gmsh.model.geo.addPlaneSurface([loop_f, loop_a])
 
 gmsh.model.geo.synchronize()
 
-# --- 5. Boundary Layer Setup ---
 f = gmsh.model.mesh.field.add("BoundaryLayer")
 gmsh.model.mesh.field.setNumbers(f, "CurvesList", [l_upper, l_lower])
 gmsh.model.mesh.field.setNumber(f, "Size", first_layer)
 gmsh.model.mesh.field.setNumber(f, "Ratio", growth_rate)
-gmsh.model.mesh.field.setNumber(f, "Thickness", 0.03) # Resolves the full BL
-gmsh.model.mesh.field.setNumber(f, "Quads", 1)       # Crucial: generates Quads
+gmsh.model.mesh.field.setNumber(f, "Thickness", 0.03) 
+gmsh.model.mesh.field.setNumber(f, "Quads", 1)       
 gmsh.model.mesh.field.setAsBoundaryLayer(f)
 
-# --- 6. Global Mesh Settings ---
-gmsh.option.setNumber("Mesh.Algorithm", 6) # Frontal-Delaunay for 2D
+gmsh.option.setNumber("Mesh.Algorithm", 6) 
 gmsh.option.setNumber("Mesh.Smoothing", 10)
 
-# --- 7. Finalize and Generate ---
 gmsh.model.addPhysicalGroup(1, [l_upper, l_lower], name="AIRFOIL")
 gmsh.model.addPhysicalGroup(1, [arc1, arc2, arc3, arc4], name="FARFIELD")
 gmsh.model.addPhysicalGroup(2, [surf], name="FLUID")
 
-# Define a box for wake refinement
 f_wake = gmsh.model.mesh.field.add("Box")
-gmsh.model.mesh.field.setNumber(f_wake, "VIn", 0.005)    # Size inside the box
-gmsh.model.mesh.field.setNumber(f_wake, "VOut", 0.5)     # Size outside
-gmsh.model.mesh.field.setNumber(f_wake, "XMin", 1.0)     # Starts at Trailing Edge
-gmsh.model.mesh.field.setNumber(f_wake, "XMax", 4.0)     # Extends 3 chords back
+gmsh.model.mesh.field.setNumber(f_wake, "VIn", 0.005)    
+gmsh.model.mesh.field.setNumber(f_wake, "VOut", 0.5)    
+gmsh.model.mesh.field.setNumber(f_wake, "XMin", 1.0)     
+gmsh.model.mesh.field.setNumber(f_wake, "XMax", 4.0)     
 gmsh.model.mesh.field.setNumber(f_wake, "YMin", -0.2)
 gmsh.model.mesh.field.setNumber(f_wake, "YMax", 0.2)
 
-# Use the 'Min' field to combine the Boundary Layer and the Wake
 f_final = gmsh.model.mesh.field.add("Min")
-gmsh.model.mesh.field.setNumbers(f_final, "FieldsList", [f, f_wake]) # 'f' is your BL field
+gmsh.model.mesh.field.setNumbers(f_final, "FieldsList", [f, f_wake]) 
 gmsh.model.mesh.field.setAsBackgroundMesh(f_final)
 
 gmsh.model.mesh.generate(2)
