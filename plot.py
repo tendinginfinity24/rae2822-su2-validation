@@ -2,7 +2,6 @@ import pyvista as pv
 import matplotlib.pyplot as plt
 import numpy as np
 
-# --- 1. NASA Case 6 Experimental Data (Cook et al.) ---
 exp_x_c = [
     0.006, 0.015, 0.025, 0.035, 0.045, 0.055, 0.065, 0.075, 0.085, 0.095,
     0.105, 0.115, 0.125, 0.135, 0.145, 0.155, 0.175, 0.195, 0.215, 0.235,
@@ -21,7 +20,6 @@ exp_cp = [
     0.040, 0.080, 0.120, 0.160, 0.196, 0.220
 ]
 
-# --- 2. Load SU2 Results with PyVista ---
 filename = "surface_flow.vtu"
 
 try:
@@ -30,53 +28,42 @@ except FileNotFoundError:
     print(f"Error: Could not find '{filename}'. Did you run SU2 yet?")
     exit()
 
-# Extract Data Arrays
-x = mesh.points[:, 0]  # X coordinates
-y = mesh.points[:, 1]  # Y coordinates (needed for sorting upper/lower)
+x = mesh.points[:, 0] 
+y = mesh.points[:, 1]  
 cp = mesh.point_data["Pressure_Coefficient"]
 
-# --- 3. Sort Data for Plotting ---
-# Since VTU is unstructured, we separate Upper/Lower surfaces to get clean lines
-# Assuming Airfoil Chord is along X-axis
+
 mask_upper = y >= 0
 mask_lower = y < 0
 
-# Create structured arrays for plotting
 upper_x = x[mask_upper]
 upper_cp = cp[mask_upper]
 lower_x = x[mask_lower]
 lower_cp = cp[mask_lower]
 
-# Sort by x coordinate so the line plot connects dots in order
-# (argsort returns the indices that would sort the array)
+
 sort_idx_upper = np.argsort(upper_x)
 sort_idx_lower = np.argsort(lower_x)
 
-# Apply sorting
 upper_x = upper_x[sort_idx_upper]
 upper_cp = upper_cp[sort_idx_upper]
 lower_x = lower_x[sort_idx_lower]
 lower_cp = lower_cp[sort_idx_lower]
 
-# --- 4. Plotting ---
 plt.figure(figsize=(10, 6))
 
-# Plot SU2 Data (Now as two clean lines)
-# We plot Upper and Lower separately so the line doesn't wrap around the nose/tail incorrectly
+
 plt.plot(upper_x, upper_cp, label="SU2 Upper", color="red", linewidth=2)
 plt.plot(lower_x, lower_cp, label="SU2 Lower", color="blue", linewidth=2, linestyle="--")
 
-# Plot Experimental Data
 plt.scatter(exp_x_c, exp_cp, label="NASA Case 6 (Exp)", color="black", marker="o", s=40, zorder=5)
 
-# Formatting
-plt.gca().invert_yaxis()  # Negative Cp up
+plt.gca().invert_yaxis()  
 plt.title(f"RAE 2822 Case 6 Validation\nMa=0.729, Re=6.5E6", fontsize=14)
 plt.xlabel("x/c", fontsize=12)
 plt.ylabel("$C_p$", fontsize=12)
 plt.grid(True, linestyle="--", alpha=0.7)
 plt.legend()
 
-# Save and Show
 plt.savefig("cp_validation_vtu.png", dpi=300)
 plt.show()
